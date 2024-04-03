@@ -8,18 +8,13 @@ start_date = end_date - timedelta(days=21)
 
 msft_data = yf.download("MSFT", start=start_date.strftime('%Y-%m-%d'), end=end_date.strftime('%Y-%m-%d'))
 
+def get_SMA(data, lookback_period=10):
+    return data['Close'].rolling(window=lookback_period).mean()
 
-msft_data_last_11 = msft_data.tail(11)
+def get_momentum(data, lookback_period=10):
+    return data['Close'] - data['Close'].shift(lookback_period)
 
-# SMA and Momentum 10day
-sma_10_day = msft_data_last_11['Close'][:-1].mean()
-
-momentum_10_day = msft_data_last_11['Close'].iloc[-1] - msft_data_last_11['Close'].iloc[0]
-
-# stochastic oscillator K%
-lowest_low = msft_data_last_11['Low'][:-1].min()
-highest_high = msft_data_last_11['High'][:-1].max()
-current_close = msft_data_last_11['Close'].iloc[-1]
-k_percent = ((current_close - lowest_low) / (highest_high - lowest_low)) * 100
-
-momentum_10_day,k_percent,sma_10_day
+def get_stochastic_oscillator_k_percent(data, lookback_period=14):
+    lowest_low = data['Low'].rolling(window=lookback_period).min()
+    highest_high = data['High'].rolling(window=lookback_period).max()
+    return ((data['Close'] - lowest_low) / (highest_high - lowest_low)) * 100
