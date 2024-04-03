@@ -1,4 +1,4 @@
-def get_williams_percent_range(data, lookback_period):
+def get_williams_percent_range(data, lookback_period=14):
     rolling_highest_high = data['High'].rolling(window=lookback_period).max()
     rolling_lowest_low = data['Low'].rolling(window=lookback_period).min()
     return -100 * ((rolling_highest_high - data['Close']) / (rolling_highest_high - rolling_lowest_low))
