@@ -1,10 +1,9 @@
-from Bottom3Attributes import *
 from datetime import datetime, timedelta
 import pandas as pd
 from sklearn.ensemble import AdaBoostClassifier
 from sklearn.model_selection import GridSearchCV, TimeSeriesSplit, train_test_split
 from sklearn.metrics import accuracy_score, balanced_accuracy_score, make_scorer, precision_score, recall_score, f1_score, roc_auc_score
-from Top3Attributes import *
+from Attributes import *
 import yfinance as yf
 
 def get_attributes(ticker, period):
@@ -15,9 +14,9 @@ def get_attributes(ticker, period):
     non_target_attribs['10 Day Simple Moving Average'] = get_SMA(data)
     non_target_attribs['10 Day Momentum'] = get_momentum(data)
     non_target_attribs['14 Day Stochastic Oscillator K%'] = get_stochastic_oscillator_k_percent(data, 14)
-    #non_target_attribs['14 Day Stochastic D%'] = get_
-    #non_target_attribs['14 Day Relative Strength Index'] = get_
-    #non_target_attribs['Moving Average Convergence Divergence'] = get_
+    non_target_attribs['14 Day Stochastic D%'] = get_stochastic_oscillator_k_percent_moving_average(data, 14)
+    non_target_attribs['14 Day Relative Strength Index'] = get_relative_strength_index(data, 14)
+    non_target_attribs['Moving Average Convergence Divergence'] = get_moving_average_convergence_divergence(data)
     non_target_attribs['14 Day Williams % R'] = get_williams_percent_range(data, 14)
     non_target_attribs['A/D Index'] = get_a_d_index(data)
     non_target_attribs['20 Day Commodity Channel Index'] = get_commodity_channel_index(data, 20)
