@@ -2,9 +2,11 @@ from datetime import datetime, timedelta
 import pandas as pd
 from sklearn.ensemble import AdaBoostClassifier
 from sklearn.model_selection import GridSearchCV, TimeSeriesSplit, train_test_split
+from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import accuracy_score, balanced_accuracy_score, make_scorer, precision_score, recall_score, f1_score, roc_auc_score
 from Attributes import *
 import yfinance as yf
+import matplotlib.pyplot as plt
 
 def get_attributes(ticker, period):
     end_date = datetime.now()
@@ -43,13 +45,39 @@ def model_ticker(ticker, period = 182):
     X, y = get_attributes(ticker, period)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1, shuffle=False)
     hyper_grid = {
-        'n_estimators': [50, 75, 100, 125, 150],
-        'learning_rate': [0.5, 0.75, 1.0, 1.25, 1.5]
+        'n_estimators': [1, 2, 4, 6, 10],
+        'learning_rate': [0.25, 0.5, .75, 1, 1.25]
     }
+
     splitter = TimeSeriesSplit(n_splits=5, max_train_size=730)
     precision_scorer = make_scorer(precision_score, zero_division=1)
-    grid_search = GridSearchCV(AdaBoostClassifier(algorithm='SAMME', random_state=1), hyper_grid, scoring=precision_scorer, cv=splitter)
+    estimator = DecisionTreeClassifier(max_depth=3)  # Regularization by limiting max depth
+    grid_search = GridSearchCV(AdaBoostClassifier(estimator=estimator, algorithm='SAMME', random_state=1), hyper_grid, scoring=precision_scorer, cv=splitter)
     grid_search.fit(X_train, y_train)
+    
+    # Extracting results from grid search
+    results = grid_search.cv_results_
+    params = results['params']
+    mean_test_scores = results['mean_test_score']
+    
+    # Plotting hyperparameter tuning graphs
+    fig, ax = plt.subplots(1, 2, figsize=(12, 5))
+    
+    # Plotting n_estimators vs. mean test score
+    ax[0].plot([param['n_estimators'] for param in params], mean_test_scores, marker='o')
+    ax[0].set_xlabel('Number of Estimators')
+    ax[0].set_ylabel('Mean Test Score (Precision)')
+    ax[0].set_title('Hyperparameter Tuning: Number of Estimators')
+    
+    # Plotting learning_rate vs. mean test score
+    ax[1].plot([param['learning_rate'] for param in params], mean_test_scores, marker='o')
+    ax[1].set_xlabel('Learning Rate')
+    ax[1].set_ylabel('Mean Test Score (Precision)')
+    ax[1].set_title('Hyperparameter Tuning: Learning Rate')
+    
+    plt.tight_layout()
+    plt.show()
+
     print("Best parameters:", grid_search.best_params_)
     print("Best score:", grid_search.best_score_)
     model = grid_search.best_estimator_
