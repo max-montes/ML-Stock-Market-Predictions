@@ -8,9 +8,9 @@ import yfinance as yf
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-def get_attributes(ticker, period):
+def get_attributes(ticker, period, days_to_target=1):
     end_date = datetime.now()
-    start_date = end_date - timedelta(days=period)
+    start_date = end_date - timedelta(days=period + days_to_target + 39)
     data = yf.download(ticker, start=start_date.strftime('%Y-%m-%d'), end=end_date.strftime('%Y-%m-%d'))
     non_target_attribs = pd.DataFrame()
     non_target_attribs['10 Day Simple Moving Average'] = get_SMA(data)
@@ -23,8 +23,8 @@ def get_attributes(ticker, period):
     non_target_attribs['A/D Index'] = get_a_d_index(data)
     non_target_attribs['20 Day Commodity Channel Index'] = get_commodity_channel_index(data, 20)
     non_target_attribs = non_target_attribs.dropna()
-    data = data.loc[non_target_attribs.index]
-    target_attribs = (data['Close'] > data['Open'])
+    target_attribs = (data['Close'] > data['Close'].shift(days_to_target))
+    target_attribs = target_attribs.loc[non_target_attribs.index]
     return non_target_attribs, target_attribs
 
 def print_accuracy_metrics(actuals, predicts):
