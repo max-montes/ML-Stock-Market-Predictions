@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 import pandas as pd
+from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import AdaBoostClassifier
 from sklearn.model_selection import GridSearchCV, TimeSeriesSplit, train_test_split
 from sklearn.tree import DecisionTreeClassifier
@@ -8,6 +9,7 @@ from Attributes import *
 import yfinance as yf
 import matplotlib.pyplot as plt
 import seaborn as sns
+
 
 def get_attributes(ticker, period, days_to_target=1):
     end_date = datetime.now()
@@ -24,6 +26,12 @@ def get_attributes(ticker, period, days_to_target=1):
     non_target_attribs['A/D Index'] = get_a_d_index(data)
     non_target_attribs['20 Day Commodity Channel Index'] = get_commodity_channel_index(data, 20)
     non_target_attribs = non_target_attribs.dropna()
+
+    # Z-score normalization
+    scaler = StandardScaler()
+    non_target_attribs_normalized = scaler.fit_transform(non_target_attribs)
+    non_target_attribs_normalized = pd.DataFrame(non_target_attribs_normalized, columns=non_target_attribs.columns, index=non_target_attribs.index)
+
     target_attribs = (data['Close'] > data['Close'].shift(days_to_target))
     target_attribs = target_attribs.loc[non_target_attribs.index]
     return non_target_attribs, target_attribs
@@ -98,7 +106,6 @@ def model_ticker(ticker, period=182):
 
     # Plot feature importance
     feature_importance = model.feature_importances_
-    print(feature_importance)
     feature_names = X.columns
     sorted_idx = feature_importance.argsort()
     plt.figure(figsize=(10, 8))
@@ -112,4 +119,5 @@ def model_ticker(ticker, period=182):
 # Note -- PERIOD:
 # 29 gets 1st value with all non_target attributes not nan
 # 48 is first with enough data for cross-validation
+
 model_ticker('GOOG', 1461)

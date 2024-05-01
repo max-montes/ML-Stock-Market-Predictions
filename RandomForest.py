@@ -7,6 +7,7 @@ from Attributes import *
 import yfinance as yf
 import matplotlib.pyplot as plt
 import seaborn as sns
+from sklearn.utils import resample
 
 def get_attributes(ticker, period, days_to_target=1):
     end_date = datetime.now()
@@ -25,7 +26,20 @@ def get_attributes(ticker, period, days_to_target=1):
     non_target_attribs = non_target_attribs.dropna()
     target_attribs = (data['Close'] > data['Close'].shift(days_to_target))
     target_attribs = target_attribs.loc[non_target_attribs.index]
-    return non_target_attribs, target_attribs
+
+    combined_data = pd.concat([non_target_attribs, target_attribs], axis=1)
+    majority_class = combined_data[combined_data['Close'] == True]
+    minority_class = combined_data[combined_data['Close'] == False]
+    majority_downsampled = resample(majority_class, 
+                                     replace=False,    # sample without replacement
+                                     n_samples=len(minority_class),  # to match minority class
+                                     random_state=1)  # reproducible results
+    downsampled_data = pd.concat([majority_downsampled, minority_class])
+    downsampled_data = downsampled_data.sample(frac=1, random_state=1)
+    X = downsampled_data.drop('Close', axis=1)
+    y = downsampled_data['Close']
+
+    return X, y
 
 def print_accuracy_metrics(actuals, predicts):
     accuracy = accuracy_score(actuals, predicts)
@@ -97,4 +111,4 @@ def model_ticker(ticker, period = 182):
 # Note -- PERIOD:
 # 29 gets 1st value with all non_target attributes not nan
 # 48 is first with enough data for cross-validation
-model_ticker('QQQ', 1461)
+model_ticker('MSFT', 1461)
