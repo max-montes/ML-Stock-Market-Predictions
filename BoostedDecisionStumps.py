@@ -4,6 +4,7 @@ from sklearn.ensemble import AdaBoostClassifier
 from sklearn.model_selection import GridSearchCV, TimeSeriesSplit, train_test_split
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import accuracy_score, balanced_accuracy_score, make_scorer, precision_score, recall_score, f1_score, roc_auc_score, confusion_matrix
+from sklearn.preprocessing import MinMaxScaler
 from Attributes import *
 import yfinance as yf
 import matplotlib.pyplot as plt
@@ -56,15 +57,15 @@ def print_accuracy_metrics(actuals, predicts):
 def model_ticker(ticker, period=182):
     X, y = get_attributes(ticker, period)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1, shuffle=False)
+
     hyper_grid = {
         'n_estimators': [1, 2, 4, 6, 10],
         'learning_rate': [0.25, 0.5, .75, 1, 1.25]
     }
 
-    splitter = TimeSeriesSplit(n_splits=5, max_train_size=730)
-    precision_scorer = make_scorer(precision_score, zero_division=1)
+    splitter = TimeSeriesSplit(n_splits=5)
     estimator = DecisionTreeClassifier(max_depth=3)  # Regularization by limiting max depth
-    grid_search = GridSearchCV(AdaBoostClassifier(estimator=estimator, algorithm='SAMME', random_state=1), hyper_grid, scoring=precision_scorer, cv=splitter)
+    grid_search = GridSearchCV(AdaBoostClassifier(estimator=estimator, algorithm='SAMME', random_state=1), hyper_grid, scoring='accuracy', cv=splitter)
     grid_search.fit(X_train, y_train)
 
     # Extracting results from grid search
@@ -80,7 +81,7 @@ def model_ticker(ticker, period=182):
         ax[0].plot(hyper_grid['n_estimators'], scores[i, :], label=f"Learning Rate: {lr}", marker='o', linestyle=':')
     ax[0].plot(hyper_grid['n_estimators'], scores.mean(0), label=f"Average Score", lw=3)
     ax[0].set_xlabel('Number of Estimators')
-    ax[0].set_ylabel('Mean Test Score (Precision)')
+    ax[0].set_ylabel('Mean Test Score (Accuracy)')
     ax[0].set_title('Hyperparameter Tuning: Number of Estimators')
     ax[0].set_xticks(hyper_grid['n_estimators'])
     ax[0].legend()
@@ -91,7 +92,7 @@ def model_ticker(ticker, period=182):
         ax[1].plot(hyper_grid['learning_rate'], scores[:, i], label=f"# of Estimators: {n_est}", marker='o', linestyle=':')
     ax[1].plot(hyper_grid['learning_rate'], scores.mean(1), label=f"Average Score", lw=3)
     ax[1].set_xlabel('Learning Rate')
-    ax[1].set_ylabel('Mean Test Score (Precision)')
+    ax[1].set_ylabel('Mean Test Score (Accuracy)')
     ax[1].set_title('Hyperparameter Tuning: Learning Rate')
     ax[1].set_xticks(hyper_grid['learning_rate'])
     ax[1].legend()
