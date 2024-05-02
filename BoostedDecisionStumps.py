@@ -1,14 +1,15 @@
+from Attributes import *
 from datetime import datetime, timedelta
-import pandas as pd
+import seaborn as sns
 from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import AdaBoostClassifier
 from sklearn.model_selection import GridSearchCV, TimeSeriesSplit, train_test_split
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import accuracy_score, balanced_accuracy_score, make_scorer, precision_score, recall_score, f1_score, roc_auc_score, confusion_matrix
-from Attributes import *
 import yfinance as yf
 import matplotlib.pyplot as plt
-import seaborn as sns
+import pandas as pd
+
 
 
 def get_attributes(ticker, period, days_to_target=1):
@@ -36,23 +37,23 @@ def get_attributes(ticker, period, days_to_target=1):
     target_attribs = target_attribs.loc[non_target_attribs.index]
     return non_target_attribs, target_attribs
 
-def print_accuracy_metrics(actuals, predicts):
+def get_metrics(actuals, predicts, verbose=True):
     accuracy = accuracy_score(actuals, predicts)
-    balanced_accuracy = balanced_accuracy_score(actuals, predicts)
-    precision = precision_score(actuals, predicts)
-    recall = recall_score(actuals, predicts)
-    f1 = f1_score(actuals, predicts)
-    roc_auc = roc_auc_score(actuals, predicts)
     print(f"Accuracy: {accuracy}")
-    print(f"Balanced Accuracy: {balanced_accuracy}")
-    print(f"Precision: {precision}")
-    print(f"Recall: {recall}")
-    print(f"F1 Score: {f1}")
-    print(f"ROC AUC Score: {roc_auc}")
+    if verbose:
+        balanced_accuracy = balanced_accuracy_score(actuals, predicts)
+        precision = precision_score(actuals, predicts)
+        recall = recall_score(actuals, predicts)
+        f1 = f1_score(actuals, predicts)
+        roc_auc = roc_auc_score(actuals, predicts)
+        print(f"Balanced Accuracy: {balanced_accuracy}")
+        print(f"Precision: {precision}")
+        print(f"Recall: {recall}")
+        print(f"F1 Score: {f1}")
+        print(f"ROC AUC Score: {roc_auc}")
 
     # Calculate confusion matrix
     cm = confusion_matrix(actuals, predicts)
-
     # Plot confusion matrix as heatmap
     plt.figure(figsize=(8, 6))
     sns.heatmap(cm, annot=True, cmap='Blues', fmt='g', cbar=False)
@@ -61,8 +62,10 @@ def print_accuracy_metrics(actuals, predicts):
     plt.title('Confusion Matrix')
     plt.show()
 
-def model_ticker(ticker, period=182):
-    X, y = get_attributes(ticker, period)
+    return accuracy
+
+def model_ticker(ticker, period=182, days_to_target=1, graph=True):
+    X, y = get_attributes(ticker, period, days_to_target)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1, shuffle=False)
 
     hyper_grid = {
@@ -80,54 +83,97 @@ def model_ticker(ticker, period=182):
     params = results['params']
     scores = results['mean_test_score'].reshape(len(hyper_grid['learning_rate']), len(hyper_grid['n_estimators']))
 
-    # Plotting hyperparameter tuning graphs
-    fig, ax = plt.subplots(1, 2, figsize=(12, 5))
+    if graph:
+        # Plotting hyperparameter tuning graphs
+        fig, ax = plt.subplots(1, 2, figsize=(12, 5))
 
-    # Plotting n_estimators vs. mean test score
-    for i, lr in enumerate(hyper_grid['learning_rate']):
-        ax[0].plot(hyper_grid['n_estimators'], scores[i, :], label=f"Learning Rate: {lr}", marker='o', linestyle=':')
-    ax[0].plot(hyper_grid['n_estimators'], scores.mean(0), label=f"Average Score", lw=3)
-    ax[0].set_xlabel('Number of Estimators')
-    ax[0].set_ylabel('Mean Test Score (Accuracy)')
-    ax[0].set_title('Hyperparameter Tuning: Number of Estimators')
-    ax[0].set_xticks(hyper_grid['n_estimators'])
-    ax[0].legend()
-    ax[0].grid(True)
+        # Plotting n_estimators vs. mean test score
+        for i, lr in enumerate(hyper_grid['learning_rate']):
+           ax[0].plot(hyper_grid['n_estimators'], scores[i, :], label=f"Learning Rate: {lr}", marker='o', linestyle=':')
+        ax[0].plot(hyper_grid['n_estimators'], scores.mean(0), label=f"Average Score", lw=3)
+        ax[0].set_xlabel('Number of Estimators')
+        ax[0].set_ylabel('Mean Test Score (Accuracy)')
+        ax[0].set_title('Hyperparameter Tuning: Number of Estimators')
+        ax[0].set_xticks(hyper_grid['n_estimators'])
+        ax[0].legend()
+        ax[0].grid(True)
 
-    # Plotting learning_rate vs. mean test score
-    for i, n_est in enumerate(hyper_grid['n_estimators']):
-        ax[1].plot(hyper_grid['learning_rate'], scores[:, i], label=f"# of Estimators: {n_est}", marker='o', linestyle=':')
-    ax[1].plot(hyper_grid['learning_rate'], scores.mean(1), label=f"Average Score", lw=3)
-    ax[1].set_xlabel('Learning Rate')
-    ax[1].set_ylabel('Mean Test Score (Accuracy)')
-    ax[1].set_title('Hyperparameter Tuning: Learning Rate')
-    ax[1].set_xticks(hyper_grid['learning_rate'])
-    ax[1].legend()
-    ax[1].grid(True)
+        # Plotting learning_rate vs. mean test score
+        for i, n_est in enumerate(hyper_grid['n_estimators']):
+            ax[1].plot(hyper_grid['learning_rate'], scores[:, i], label=f"# of Estimators: {n_est}", marker='o', linestyle=':')
+        ax[1].plot(hyper_grid['learning_rate'], scores.mean(1), label=f"Average Score", lw=3)
+        ax[1].set_xlabel('Learning Rate')
+        ax[1].set_ylabel('Mean Test Score (Accuracy)')
+        ax[1].set_title('Hyperparameter Tuning: Learning Rate')
+        ax[1].set_xticks(hyper_grid['learning_rate'])
+        ax[1].legend()
+        ax[1].grid(True)
 
-    plt.tight_layout()
-    plt.show()
+        plt.tight_layout()
+        plt.show()
 
     print("Best parameters:", grid_search.best_params_)
     print("Best score:", grid_search.best_score_)
     model = grid_search.best_estimator_
     y_preds = model.predict(X_test)
-    print_accuracy_metrics(y_test, y_preds)
+    accuracy = get_metrics(y_test, y_preds, verbose=graph)
 
     # Plot feature importance
     feature_importance = model.feature_importances_
     feature_names = X.columns
     sorted_idx = feature_importance.argsort()
-    plt.figure(figsize=(10, 8))
-    plt.barh(range(len(sorted_idx)), feature_importance[sorted_idx], align='center')
-    plt.yticks(range(len(sorted_idx)), [feature_names[i] for i in sorted_idx])
-    plt.xlabel('Feature Importance')
-    plt.ylabel('Feature')
-    plt.title('Feature Importance')
-    plt.show()
+    sorted_names = [feature_names[i] for i in sorted_idx]
+    if graph:
+        plt.figure(figsize=(10, 8))
+        plt.barh(range(len(sorted_idx)), feature_importance[sorted_idx], align='center')
+        plt.yticks(range(len(sorted_idx)), [feature_names[i] for i in sorted_idx])
+        plt.xlabel('Feature Importance')
+        plt.ylabel('Feature')
+        plt.title('Feature Importance')
+        plt.show()
+
+    return accuracy, sorted_names, feature_importance
 
 # Note -- PERIOD:
 # 29 gets 1st value with all non_target attributes not nan
 # 48 is first with enough data for cross-validation
 
-model_ticker('GOOG', 1461)
+target_days = [1, 3, 10, 30]
+all_accuracies = []
+all_names = []
+all_importances = []
+for n in target_days:
+    model_accuracy, model_feature_names, model_feature_importances = model_ticker('GOOG', 1461, n, False)
+    all_accuracies.append(model_accuracy)
+    all_names.append(model_feature_names)
+    all_importances.append(model_feature_importances)
+
+plt.plot(target_days, all_accuracies, marker='o')
+plt.title('Best Accuracy vs. Days to Target')
+plt.xlabel('Number of Days until Target Close (n)')
+plt.ylabel('Accuracy')
+plt.xticks(target_days)
+plt.grid(True)
+plt.show()
+
+full_data = pd.DataFrame()
+for n, names, importances in zip(target_days, all_names, all_importances):
+    temp_df = pd.DataFrame({
+        'Feature': names,
+        'Importance': importances,
+        'Days': n
+    })
+    full_data = pd.concat([full_data, temp_df], ignore_index=True)
+
+features = full_data['Feature'].unique()
+
+for feature in features:
+    subset = full_data[full_data['Feature'] == feature]
+    plt.plot(target_days, subset['Importance'], marker='o', label=feature)
+plt.title('Feature Importances vs. Days to Target')
+plt.xlabel('Number of Days until Target Close (n)')
+plt.ylabel('Feature Importance')
+plt.xticks(target_days)
+plt.legend(title='Features')
+plt.grid(True)
+plt.show()
